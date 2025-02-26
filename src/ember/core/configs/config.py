@@ -81,8 +81,16 @@ class ConfigManager:
         if "models" not in self._config:
             self._config["models"] = {}
 
+        # Ensure openai_api_key is present
         if "openai_api_key" not in self._config["models"]:
             self._config["models"]["openai_api_key"] = ""
+        # Ensure other model's keys are present
+        #   anthropic_api_key
+        if "anthropic_api_key" not in self._config["models"]:
+            self._config["models"]["anthropic_api_key"] = ""
+        #   google_api_key
+        if "google_api_key" not in self._config["models"]:
+            self._config["models"]["google_api_key"] = ""
 
         self._save()
 
@@ -92,7 +100,11 @@ class ConfigManager:
         Returns:
             None
         """
-        self._config["models"] = {"openai_api_key": ""}
+        self._config["models"] = {
+            "openai_api_key": "",
+            "anthropic_api_key": "",
+            "google_api_key": "",
+        }
 
     def _save(self) -> None:
         """Persist the current configuration to disk.
@@ -155,6 +167,18 @@ def initialize_api_keys(
     local_logger: logging.Logger = (
         logger if logger is not None else config_manager.logger
     )
+
+    # Case to add all keys from config -> OS
+     # TODO: integrate this section below to have more clarity
+    if config_manager.get("models", "openai_api_key") and os.environ.get('OPENAI_API_KEY') is None:
+        print("INFO - Adding OpenAI key in config.ini -> OS")
+        os.environ["OPENAI_API_KEY"] = config_manager.get("models", "openai_api_key")
+    if config_manager.get("models", "anthropic_api_key")  and os.environ.get('ANTHROPIC_API_KEY') is None:
+        print("INFO - Adding Anthropic key in config.ini -> OS")
+        os.environ["ANTHROPIC_API_KEY"] = config_manager.get("models", "anthropic_api_key")
+    if config_manager.get("models", "google_api_key") and os.environ.get('GOOGLE_API_KEY') is None:
+        print("INFO - Adding Google key in config.ini -> OS")
+        os.environ["GOOGLE_API_KEY"] =  config_manager.get("models", "google_api_key")
 
     openai_api_key: Optional[str] = os.environ.get("OPENAI_API_KEY")
     if openai_api_key:

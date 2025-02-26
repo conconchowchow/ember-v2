@@ -7,6 +7,8 @@ from typing import Any, Dict, TypeVar, Optional, List, Generic, Callable, Union
 from .base_evaluator import IEvaluator, EvaluationResult
 from .extractors import RegexExtractor
 
+from diversity import compression_ratio
+
 T_out = TypeVar("T_out")
 T_truth = TypeVar("T_truth")
 
@@ -174,6 +176,27 @@ class CodeExecutionEvaluator(IEvaluator[str, str]):
                 metadata={"error": str(error)},
             )
 
+class DiversityScoringEvaluator(IEvaluator[float]):
+    """
+    Evaluator to test ensemble outputs -> score them (float)
+    """
+    def evaluate(
+            self, 
+            system_output: List[str], 
+            **kwargs) -> EvaluationResult:
+        if system_output is None or len(system_output) == 0:
+            return EvaluationResult(is_correct=False, score=-1)
+
+        # current compression ratio formula
+        # TODO: update scoring function to make it better
+        # -> like use token count
+
+        # example I was thinking about:
+        # letter_sum = sum(len(response) for response in system_output)
+        # ratio = compression_ratio(system_output) * min(1, len(system_output)/5) * min(1, letter_sum/100)
+        ratio = compression_ratio(system_output)
+
+        return EvaluationResult(is_correct=True,score=ratio)
 
 # Composite Evaluator Example
 
@@ -216,3 +239,5 @@ if __name__ == "__main__":
     code_string = "print('Hello')"
     result_code = code_evaluator.evaluate(code_string, "Hello")
     print("CodeExecutionEvaluator result:", result_code)
+
+    #TODO Example 5: Diversity Scoring evaluator.
