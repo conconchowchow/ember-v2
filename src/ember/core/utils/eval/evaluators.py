@@ -194,9 +194,8 @@ class DiversityScoringEvaluator(IEvaluator[List[str], None]):
         # example I was thinking about:
         # letter_sum = sum(len(response) for response in system_output)
         # ratio = compression_ratio(system_output) * min(1, len(system_output)/5) * min(1, letter_sum/100)
-        ratio = compression_ratio(system_output)
-
-        return EvaluationResult(is_correct=True,score=ratio)
+        ratio = compression_ratio(system_output, algorithm='gzip',verbose=True)
+        return EvaluationResult(is_correct=True,score=ratio,metadata = {'responses': system_output})
 
 # Composite Evaluator Example
 
@@ -242,6 +241,9 @@ if __name__ == "__main__":
 
     #TODO Example 5: Diversity Scoring evaluator.
     diversity_evaluator = DiversityScoringEvaluator()
-    input_strs = ["hi there", "hi", "hello", "yo whatup"]
+    # input_strs = ["hi there", "hi", "hello", "yo whatup"]
+    input_strs = ["This is a sample text with lots of repetition.", 
+                  "This is a sample text with lots of repetition.",
+                  "This is a sample text with lots of repetition."]
     result_diversity = diversity_evaluator.evaluate(input_strs)
-    print("DiversityScoringEvaluator resut:", result_diversity)
+    print("DiversityScoringEvaluator result:", result_diversity)
