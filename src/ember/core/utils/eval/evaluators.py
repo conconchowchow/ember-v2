@@ -13,7 +13,7 @@ T_out = TypeVar("T_out")
 T_truth = TypeVar("T_truth")
 
 
-class ComposedEvaluator(IEvaluator[T_out, Any], Generic[T_out, Any]):
+class ComposedEvaluator(IEvaluator[T_out, Any], Generic[T_out, T_truth]):
     """Combines an output extractor with an evaluator for the extracted data.
 
     This evaluator first transforms the system output using the provided extractor,
@@ -176,7 +176,7 @@ class CodeExecutionEvaluator(IEvaluator[str, str]):
                 metadata={"error": str(error)},
             )
 
-class DiversityScoringEvaluator(IEvaluator[List[str]]):
+class DiversityScoringEvaluator(IEvaluator[List[str], None]):
     """
     Evaluator to test ensemble outputs -> score them (float)
     """
@@ -242,6 +242,6 @@ if __name__ == "__main__":
 
     #TODO Example 5: Diversity Scoring evaluator.
     diversity_evaluator = DiversityScoringEvaluator()
-    input_strs = ["hi there", "hi", 'hello', 'yo whatup']
+    input_strs = ["hi there", "hi", "hello", "yo whatup"]
     result_diversity = diversity_evaluator.evaluate(input_strs)
     print("DiversityScoringEvaluator resut:", result_diversity)
