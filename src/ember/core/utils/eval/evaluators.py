@@ -176,7 +176,7 @@ class CodeExecutionEvaluator(IEvaluator[str, str]):
                 metadata={"error": str(error)},
             )
 
-class DiversityScoringEvaluator(IEvaluator[float]):
+class DiversityScoringEvaluator(IEvaluator[List[str]]):
     """
     Evaluator to test ensemble outputs -> score them (float)
     """
@@ -241,3 +241,7 @@ if __name__ == "__main__":
     print("CodeExecutionEvaluator result:", result_code)
 
     #TODO Example 5: Diversity Scoring evaluator.
+    diversity_evaluator = DiversityScoringEvaluator()
+    input_strs = ["hi there", "hi", 'hello', 'yo whatup']
+    result_diversity = diversity_evaluator.evaluate(input_strs)
+    print("DiversityScoringEvaluator resut:", result_diversity)
