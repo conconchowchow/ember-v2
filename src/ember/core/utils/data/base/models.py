@@ -1,7 +1,7 @@
 from enum import Enum
 from typing import Any, Dict
 
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, field_validator
 
 
 class TaskType(str, Enum):
@@ -19,6 +19,10 @@ class TaskType(str, Enum):
     SHORT_ANSWER: str = "short_answer"
     CODE_COMPLETION: str = "code_completion"
 
+    def __str__(self) -> str:
+        """Return the string value of the enum."""
+        return self.value
+
 
 class DatasetInfo(BaseModel):
     """Model representing essential dataset information.
@@ -35,6 +39,14 @@ class DatasetInfo(BaseModel):
     source: str
     task_type: TaskType
 
+    @field_validator("name")
+    @classmethod
+    def validate_name(cls, value: str) -> str:
+        """Validate that the name is not empty."""
+        if not value or not value.strip():
+            raise ValueError("Dataset name cannot be empty")
+        return value
+
 
 class DatasetEntry(BaseModel):
     """Model for a single dataset entry.
@@ -50,3 +62,11 @@ class DatasetEntry(BaseModel):
     query: str
     choices: Dict[str, str] = Field(default_factory=dict)
     metadata: Dict[str, Any] = Field(default_factory=dict)
+
+    @field_validator("query")
+    @classmethod
+    def validate_query(cls, value: str) -> str:
+        """Validate that the query is not empty."""
+        if not value or not value.strip():
+            raise ValueError("Query cannot be empty")
+        return value
