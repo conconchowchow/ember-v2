@@ -1,313 +1,683 @@
-# Ember: Compositional framework for Compound AI Systems and "Networks of Networks" (NONs)
+# Ember: Compositional Framework for Compound AI Systems
 
-## 1. Introduction
+[![License](https://img.shields.io/badge/License-Apache%202.0-blue.svg)](https://opensource.org/licenses/Apache-2.0)
 
-### What is Ember?
+## Overview
 
-Ember is a Python library for constructing Compound AI Systems and "Networks of Networks" (NONs). Ember aims to provide, for the **NON** construction context, a similar experience to PyTorch/FLAX in the **NN** context. 
+Ember is a powerful, extensible Python framework for building and orchestrating Compound AI Systems and "Networks of Networks" (NONs). Inspired by the best of PyTorch, JAX, and other modern frameworks, Ember provides a familiar yet powerful API for composing complex AI systems with optimized execution.
 
-The goal of Ember's design is to provide:
+**Core Features:**
+- 🔥 **Eager Execution by Default**: Intuitive development experience with immediate execution results
+- 🚀 **Parallel Graph Execution**: Automatic optimization of execution flow for concurrent operations
+- 🧩 **Composable Operators**: PyTorch-like modular components for high reusability
+- 🔌 **Extensible Registry System**: First-class support for custom models, operators, and evaluators
+- ⚡ **Enhanced JIT System**: JAX-inspired tracing and graph optimization with hierarchical awareness
+- 📊 **Built-in Evaluation**: Comprehensive tools for measuring and analyzing model performance
+- 🔄 **Powerful Data Handling**: Extensible data pipeline integration with popular datasets
 
-- **The structural and efficiency beniefits**: of JAX/XLA-like graph execution.  
-- **The top-level compositional and eager-mode user experience**: of PyTorch/FLAX.
+## Quick Installation
 
-With Ember, we can compose complex pipelines (a.k.a. "Networks of Networks" architectures) and multi-model, multi-step systems, that both execute efficiently and are easy to read and understand.
+```bash
+# Install using pip
+pip install ember-ai
 
-**Why Ember?**
-- **Eager Execution**: by default, which AI practitioners accustomed to NN architectures design may find more intuitive (ala PyTorch). 
-
-- **Graph Scheduling** behind the scenes, allowing us to optionally run "fan-out" computations in parallel (ala JAX/XLA, and their transform and concurrency orientation).
-
-- **Composable** with "Operators" reminiscent of PyTorch's `nn.Module`: you can chain, nest, and re-use them. 
-
-- **Extensible**: via a registry-based approach for custom operators, model-APIs, datasets, evaluation functions, and eventual integrations.
-
-### Real-World Use Cases
-
-- **Best-of-K** multi-model inference-time consortiums, ala Are More LLM Calls Are All You Need (Chen et al., 2024), Networks of Networks (Davis et al., 2024), Compound AI Systems (Zaharia et al., 2024), and Learning to Reason with LLMs (OpenAI et al., 2024).
-- **Multi-agent LLM-based CAIS pipelines**: such as STORM (Shao et al., 2024), etc
-
-- add more... 
-
-### 2. A Quick Example: Composing a Multi-Model Ensemble
-
-Below is a short snippet illustrating Ember's API for assembling a multi-model ensemble.
-
-```python
+# Or using Poetry
+poetry add ember-ai
 ```
 
-**What’s happening?**
+## Motivating Example: Sophisticated Multi-LLM Architecture
 
-- We fan out (via an ensemble operator) to three different LLMs, each receiving the same query.
-- We then fan in their responses with a JudgeBasedOperator,” (ala `Networks of Networks`) which considers the 'inputs/advise of the ensemble members and outputs a final answer.
-- Under the hood, Ember can run amenable calls in parallel if configured with a concurrency plan—no special code required beyond defining to_plan() for operators or wrapping Operators using a tracer with the @jit decorator.
-
-# 3. Core Components of Ember
-
-The building blocks of Ember are separated via a '**registry-based**' design for composability.
-You can declare or register your providers and models, giving Ember information about rate-limits, costs, etc so it can optimize (more on this later). You can also declare or register new **Operators**, **Datasets**, **Evaluation Functions**, and **Prompts Signatures** in the `registry` directory.
-
-## 3.1 Model Registry
-
-The Model Registry centralizes all the model configurations and metadata. It's the backbone of Ember's approach to discovering and managing LLM endpoints (like **OpenAI**'s `gpt-4o`, **Anthropic**'s `claude-3.5-sonnet`, **Google**'s `gemini-1.5-pro`, proprietary and OSS models via **IBM WatsonX** or custom/OSS LLMs e.g. served via **Ember**'s serving endpoint's for OSS models like DBRX, Llama, Deepseek, Qwen, etc.)
-
-### Key Features
-- **Registration**: You define a ModelInfo object (containing metadata about the cost, rate limits, provider info, and an API key) and pass it to the registry.
-- **Lookup**: You can retrieve models by strine ID or enum or easy referencing in your code. 
-- **Usage Tracking**: Ember can track usage, cost, and latency logs for models and providers, and provide usage summaries.
-
-
-#### Example: Registering and using a model
+Let's start with a real-world compound AI system that demonstrates Ember's power - a complex reasoning system with model ensembling, verification, and synthesis, all automatically parallelized:
 
 ```python
-# Initialize registry
-registry = ModelRegistry()
-usage_service = UsageService()
-model_service = ModelService(registry, usage_service)
+from typing import ClassVar
+from ember.xcs.tracer import jit
+from ember.xcs.engine import execution_options
+from ember.core import non
+from ember.core.registry.operator.base import Operator
+from ember.core.registry.prompt_specification import Specification
+from ember.core.types.ember_model import EmberModel
 
-# Register an OpenAI GPT-4 style model
-openai_info = ModelInfo(
-    model_id="openai:gpt-4o",  # unique ID
-    model_name="gpt-4o",
-    cost=ModelCost(input_cost_per_thousand=0.03, output_cost_per_thousand=0.06),
-    rate_limit=RateLimit(tokens_per_minute=80000, requests_per_minute=5000),
-    provider=ProviderInfo(name="OpenAI", default_api_key=settings.openai_api_key),
-    api_key=settings.openai_api_key,
+# Define structured model inputs/outputs
+class QueryInput(EmberModel):
+    query: str
+    
+class ReasoningOutput(EmberModel):
+    final_answer: str
+    confidence: float
+
+class ReasoningSpecification(Specification):
+    input_model = QueryInput
+    output_model = ReasoningOutput
+
+@jit
+class AdvancedReasoningSystem(Operator[QueryInput, ReasoningOutput]):
+    """A sophisticated reasoning system with:
+    1. Parallel LLM reasoning with different models
+    2. Verification of reasoning steps
+    3. Synthesis of final response
+    """
+    
+    # Class-level specification declaration
+    specification: ClassVar[Specification] = ReasoningSpecification()
+    
+    # Class-level field declarations with types
+    reasoning_ensemble: non.UniformEnsemble
+    verifier: non.Verifier
+    synthesizer: non.JudgeSynthesis
+    
+    def __init__(self):
+        # Initialize declared fields
+        self.reasoning_ensemble = non.UniformEnsemble(
+            num_units=3, 
+            model_name="openai:gpt-4o",
+            temperature=0.7
+        )
+        
+        self.verifier = non.Verifier(
+            model_name="anthropic:claude-3-sonnet",
+            verification_criteria=["factual_accuracy", "coherence", "completeness"]
+        )
+        
+        self.synthesizer = non.JudgeSynthesis(
+            model_name="anthropic:claude-3-opus",
+            temperature=0.2
+        )
+    
+    def forward(self, *, inputs: QueryInput) -> ReasoningOutput:
+        # Step 1: Get multiple reasoning paths (executed in parallel)
+        reasoning_results = self.reasoning_ensemble(inputs={"query": inputs.query})
+        
+        # Step 2: Verify each reasoning path (also executed in parallel)
+        verification_results = self.verifier(inputs={
+            "query": inputs.query,
+            "responses": reasoning_results["responses"]
+        })
+        
+        # Step 3: Synthesize a final response from verified reasoning
+        synthesis = self.synthesizer(inputs={
+            "query": inputs.query,
+            "verified_responses": verification_results["verified_responses"],
+            "verification_scores": verification_results["scores"]
+        })
+        
+        # Return structured output
+        return ReasoningOutput(
+            final_answer=synthesis["final_answer"],
+            confidence=synthesis.get("confidence", 0.0)
+        )
+
+# Create and use the system (graph is automatically built and optimized)
+reasoner = AdvancedReasoningSystem()
+
+# Enable maximum parallelization
+with execution_options(max_workers=4):
+    # Using kwargs format for cleaner input
+    result = reasoner(inputs={"query": "What are the economic implications of quantum computing?"})
+    
+print(f"Final synthesized answer: {result.final_answer}")
+print(f"Confidence: {result.confidence:.2f}")
+```
+
+This example demonstrates how Ember automatically:
+1. Traces the execution flow to build an optimized computation graph
+2. Identifies parallel execution opportunities
+3. Handles dependencies between operators correctly
+4. Provides a clean, Pythonic API for complex AI system composition
+
+## Progression of Examples
+
+### 1. Minimal Example: Single LLM Operator
+
+The simplest possible Ember application - a single LLM call wrapped in an operator:
+
+```python
+from typing import ClassVar
+from ember.core.registry.operator.base import Operator
+from ember.core.registry.model.model_module import LMModule, LMModuleConfig
+from ember.core.registry.prompt_specification import Specification
+from ember.core.types.ember_model import EmberModel
+
+class SimpleInput(EmberModel):
+    query: str
+    
+class SimpleOutput(EmberModel):
+    answer: str
+    
+class SimpleQASpecification(Specification):
+    input_model = SimpleInput
+    output_model = SimpleOutput
+    prompt_template = "Please answer this question: {query}"
+
+class SimpleQA(Operator[SimpleInput, SimpleOutput]):
+    """Basic question-answering operator using a single LLM."""
+    
+    # Class-level specification declaration
+    specification: ClassVar[Specification] = SimpleQASpecification()
+    
+    # Class-level field declaration
+    lm: LMModule
+    
+    def __init__(self, model_name: str = "openai:gpt-4o-mini"):
+        # Initialize the declared field
+        self.lm = LMModule(LMModuleConfig(model_name=model_name))
+        
+    def forward(self, *, inputs: SimpleInput) -> SimpleOutput:
+        # Generate prompt using specification
+        prompt = self.specification.render_prompt(inputs)
+        
+        # Get response from LLM
+        response = self.lm(prompt)
+        
+        # Return structured output
+        return SimpleOutput(answer=response.strip())
+
+# Create and use the operator with kwargs format
+qa_system = SimpleQA()
+result = qa_system(inputs={"query": "What is the capital of France?"})
+print(result.answer)
+```
+
+### 2. Medium Complexity: Multi-Model Ensemble with JIT
+
+A more sophisticated example with multiple models and automatic optimization:
+
+```python
+from typing import ClassVar, List
+from ember.core.registry.operator.base import Operator
+from ember.xcs.tracer import jit
+from ember.core import non
+from ember.core.registry.prompt_specification import Specification
+from ember.core.types.ember_model import EmberModel
+
+class EnsembleInput(EmberModel):
+    query: str
+    
+class EnsembleOutput(EmberModel):
+    final_answer: str
+    confidence: float
+    model_responses: List[str]
+    
+class EnsembleSpecification(Specification):
+    input_model = EnsembleInput
+    output_model = EnsembleOutput
+
+@jit
+class QAEnsemble(Operator[EnsembleInput, EnsembleOutput]):
+    """Question-answering ensemble with multiple models and automatic graph building."""
+    
+    # Class-level specification declaration
+    specification: ClassVar[Specification] = EnsembleSpecification()
+    
+    # Class-level field declarations
+    ensemble: non.UniformEnsemble
+    aggregator: non.MostCommon
+    
+    def __init__(self, num_models: int = 3):
+        # Initialize declared fields
+        self.ensemble = non.UniformEnsemble(
+            num_units=num_models, 
+            model_name="openai:gpt-4o-mini",
+            temperature=0.7
+        )
+        
+        self.aggregator = non.MostCommon()
+    
+    def forward(self, *, inputs: EnsembleInput) -> EnsembleOutput:
+        # Get multiple responses from ensemble (automatically parallelized)
+        ensemble_result = self.ensemble(inputs={"query": inputs.query})
+        responses = ensemble_result["responses"]
+        
+        # Aggregate responses to get final answer
+        aggregator_inputs = {
+            "query": inputs.query,
+            "responses": responses
+        }
+        final_result = self.aggregator(inputs=aggregator_inputs)
+        
+        # Return structured output
+        return EnsembleOutput(
+            final_answer=final_result["final_answer"],
+            confidence=final_result.get("confidence", 0.0),
+            model_responses=responses
+        )
+
+# Create and use the ensemble with kwargs format
+ensemble = QAEnsemble(num_models=5)
+result = ensemble(inputs={"query": "What is the tallest mountain in the world?"})
+print(f"Answer: {result.final_answer}")
+print(f"Confidence: {result.confidence:.2f}")
+print(f"Number of model responses: {len(result.model_responses)}")
+```
+
+### 3. Advanced Example: Complex Pipeline with Multiple Stages
+
+Demonstrates a multi-stage pipeline with different operators and automatic execution optimization:
+
+```python
+from typing import ClassVar
+from ember.core.registry.operator.base import Operator
+from ember.xcs.tracer import jit, execution_options
+from ember.core.registry.prompt_specification import Specification
+from ember.core.types.ember_model import EmberModel
+from ember.core.registry.model.model_module import LMModule, LMModuleConfig
+
+class DocumentInput(EmberModel):
+    document: str
+    max_words: int = 150
+
+class DocumentOutput(EmberModel):
+    summary: str
+    analysis: str
+    fact_check: str
+
+class DocumentProcessorSpecification(Specification):
+    input_model = DocumentInput
+    output_model = DocumentOutput
+    prompt_template = """Summarize the following text in {max_words} words or less:
+    
+{document}
+    
+Summary:"""
+
+@jit
+class DocumentProcessor(Operator[DocumentInput, DocumentOutput]):
+    """Advanced document processing pipeline with multiple stages."""
+    
+    # Class-level specification declaration
+    specification: ClassVar[Specification] = DocumentProcessorSpecification()
+    
+    # Class-level field declarations
+    summarizer: LMModule
+    analyzer: LMModule
+    fact_checker: LMModule
+    
+    def __init__(self):
+        # Initialize declared fields
+        self.summarizer = LMModule(
+            LMModuleConfig(model_name="anthropic:claude-3-sonnet")
+        )
+        
+        self.analyzer = LMModule(
+            LMModuleConfig(model_name="openai:gpt-4o")
+        )
+        
+        self.fact_checker = LMModule(
+            LMModuleConfig(model_name="anthropic:claude-3-haiku")
+        )
+    
+    def forward(self, *, inputs: DocumentInput) -> DocumentOutput:
+        # Stage 1: Create a summary
+        summary_prompt = self.specification.render_prompt(inputs)
+        summary = self.summarizer(summary_prompt)
+        
+        # Stage 2: Analyze themes (runs in parallel with fact checking)
+        analysis_prompt = f"Analyze the key themes in this text: {summary}"
+        analysis_task = self.analyzer(analysis_prompt)
+        
+        # Stage 3: Fact check (runs in parallel with analysis)
+        fact_check_prompt = f"Identify any potential factual errors in: {summary}"
+        fact_check_task = self.fact_checker(fact_check_prompt)
+        
+        # Results are automatically awaited when accessed
+        return DocumentOutput(
+            summary=summary,
+            analysis=analysis_task,
+            fact_check=fact_check_task
+        )
+
+# Process a document with automatic parallelization
+processor = DocumentProcessor()
+
+with execution_options(max_workers=3):
+    # Using kwargs format for input
+    result = processor(inputs={
+        "document": "Long document text...",
+        "max_words": 200
+    })
+
+print(f"Summary: {result.summary}")
+print(f"Analysis: {result.analysis}")
+print(f"Fact Check: {result.fact_check}")
+```
+
+## Core Components
+
+### Model Registry
+
+Ember's Model Registry provides a unified interface to various LLM providers with comprehensive management features:
+
+```python
+from ember import initialize_ember
+from ember.core.registry.model import ModelEnum
+from ember.core.registry.model.base.services import ModelService, UsageService
+
+# One-line initialization (quickest approach)
+service = initialize_ember(usage_tracking=True)
+
+# Use models directly with service (like a function)
+response = service(ModelEnum.OPENAI_GPT4O, "What is the capital of France?")
+print(response.data)
+
+# Or with more explicit API
+response = service.invoke_model(
+    model_id=ModelEnum.ANTHROPIC_CLAUDE_3_SONNET,
+    prompt="Explain quantum computing in simple terms."
 )
 
-registry.register_model(openai_info)
-
-# Use it
-resp = model_service("openai:gpt-4o", "Hello from Ember!")
-print(resp.data)  # LLM response
+# Track usage statistics
+usage = service.usage_service.get_total_usage()
+print(f"Total tokens used: {usage.tokens}")
+print(f"Estimated cost: ${usage.cost:.6f}")
 ```
 
-## 3.2 LM Modules
+### Operators
 
-### Concept
-
-While the Model Registry is about storing info, LM Modules are the actual callable objects you use in an operator. Each LM Module:
-- Wraps a specific model from the registry (e.g., “gpt-4o”).
-- Provides a **unified** `.generate_response(prompt, **kwargs)` or direct `__call__` interface.
-- Optionally sets generation parameters like temperature, max tokens, or persona.
-
-Why Modules?
-- Keep a **uniform calling convention** across many LLMs.
-- **Integrate easily with Ember’s concurrency model** (fan-out calls can just invoke multiple LM Modules in parallel).
-
-### Basic Pattern
+Operators are the fundamental building blocks in Ember, similar to PyTorch's `nn.Module`. Here's a more comprehensive example showing proper typing and initialization:
 
 ```python
-from src.ember.registry.operator.operator_base import LMModuleConfig, LMModule
+from typing import ClassVar, List
+from ember.core.registry.operator.base import Operator
+from ember.core.registry.prompt_specification import Specification
+from ember.core.types.ember_model import EmberModel
+from ember.core.registry.model.model_module import LMModule, LMModuleConfig
 
-config = LMModuleConfig(
-    model_name="gpt-4o",
-    temperature=0.7,
-    max_tokens=200,
-)
-lm = LMModule(config, model_registry=registry)
+# Define structured I/O models for type safety
+class SentimentInput(EmberModel):
+    text: str
 
-result = lm("What is the capital of France?")
-print("Answer:", result)
+class SentimentOutput(EmberModel):
+    sentiment: str
+    confidence: float
+    reasons: List[str]
+
+# Create a specification with structured I/O and prompt template
+class SentimentSpecification(Specification):
+    input_model = SentimentInput
+    output_model = SentimentOutput
+    prompt_template = """Analyze the sentiment of the following text:
+    
+{text}
+    
+Provide your analysis as a JSON object with fields:
+- sentiment: either "positive", "negative", or "neutral"
+- confidence: a float between 0 and 1
+- reasons: a list of key phrases that support your analysis"""
+
+# Create the operator
+class SentimentAnalyzer(Operator[SentimentInput, SentimentOutput]):
+    # Class-level specification declaration
+    specification: ClassVar[Specification] = SentimentSpecification()
+    
+    # Class-level field declaration
+    lm: LMModule
+    
+    def __init__(self, model_name: str = "openai:gpt-4o"):
+        # Initialize the declared field
+        self.lm = LMModule(LMModuleConfig(model_name=model_name))
+        
+    def forward(self, *, inputs: SentimentInput) -> SentimentOutput:
+        # Render prompt from inputs using the specification
+        prompt = self.specification.render_prompt(inputs)
+        
+        # Get response from LLM
+        response = self.lm(prompt)
+        
+        # Parse structured output using the specification
+        return self.specification.parse_response(response)
+
+# Use the operator with kwargs format
+analyzer = SentimentAnalyzer()
+result = analyzer(inputs={"text": "I absolutely loved the new movie!"})
+print(f"Sentiment: {result.sentiment} (Confidence: {result.confidence:.2f})")
+print(f"Reasons: {', '.join(result.reasons)}")
 ```
 
-### Where They Shine
-- **Ensembles**: If you want to call the same model multiple times or different models in parallel, create multiple LM Modules.
-- **Chain-of-thought**: If you want to do a multi-step reasoning workflow, you can pass partial outputs into subsequent LM calls, all orchestrated by your Ember operator logic.
+### Networks of Networks (NON)
 
-
-# 4. Signatures and `SPECIFICATIONS`
-
-### Why Signatures?
-
-A Signature describes what inputs an operator expects and how its output should look. This concept, inspired by [DSPy’s structured specification approach](https://arxiv.org/abs/… or dspy.io), helps ensure your operators remain well-defined and type-safe.
-
-### What They Include
-	1.	required_inputs: A list of field names that must appear in the input dictionary.
-	2.	prompt_template: An optional string template to generate LLM prompts. It can reference the required inputs (e.g., "The question is {question}. Summarize in one line.").
-	3.	structured_output (optional): A Pydantic model for validating the operator’s output.
-	4.	input_model (optional): A Pydantic model that ensures the operator’s input is well-formed.
-
-### Example: A custom signature for network intrusion detection labeling
+Ember provides powerful components for building complex Networks of Networks (NON):
 
 ```python
-class CaravanLabelsOutput(BaseModel):
-    """Example output model for Caravan labeling."""
+from typing import ClassVar
+from ember.core.registry.operator.base import Operator
+from ember.core.registry.prompt_specification import Specification
+from ember.core.types.ember_model import EmberModel
+from ember.core import non
 
-    label: str
+class NetworkInput(EmberModel):
+    query: str
+    
+class NetworkOutput(EmberModel):
+    final_answer: str
+    
+class SubNetworkSpecification(Specification):
+    input_model = NetworkInput
+    output_model = NetworkOutput
 
+class SubNetwork(Operator[NetworkInput, NetworkOutput]):
+    """SubNetwork that composes an ensemble with verification."""
+    
+    # Class-level specification declaration
+    specification: ClassVar[Specification] = SubNetworkSpecification()
+    
+    # Class-level field declarations
+    ensemble: non.UniformEnsemble
+    verifier: non.Verifier
+    
+    def __init__(self):
+        # Initialize declared fields
+        self.ensemble = non.UniformEnsemble(
+            num_units=2, model_name="openai:gpt-4o", temperature=0.0
+        )
+        self.verifier = non.Verifier(model_name="openai:gpt-4o", temperature=0.0)
+    
+    def forward(self, *, inputs: NetworkInput) -> NetworkOutput:
+        # Process through ensemble
+        ensemble_result = self.ensemble(inputs={"query": inputs.query})
+        
+        # Get the candidate answer
+        candidate_answer = ensemble_result.get("final_answer", "")
+        
+        # Verify the ensemble's output
+        verification_input = {
+            "query": inputs.query,
+            "candidate_answer": candidate_answer,
+        }
+        verified_result = self.verifier(inputs=verification_input)
+        
+        # Return structured output
+        return NetworkOutput(final_answer=verified_result.get("final_answer", ""))
 
-class CaravanLabelingInputs(BaseModel):
-    question: str
+# Create nested networks
+class NestedNetwork(Operator[NetworkInput, NetworkOutput]):
+    """Nested network with sub-networks and final judgment."""
+    
+    # Class-level specification declaration
+    specification: ClassVar[Specification] = SubNetworkSpecification()
+    
+    # Class-level field declarations
+    sub1: SubNetwork
+    sub2: SubNetwork
+    judge: non.JudgeSynthesis
+    
+    def __init__(self):
+        # Initialize declared fields
+        self.sub1 = SubNetwork()
+        self.sub2 = SubNetwork()
+        self.judge = non.JudgeSynthesis(model_name="openai:gpt-4o", temperature=0.0)
+    
+    def forward(self, *, inputs: NetworkInput) -> NetworkOutput:
+        # Process through parallel sub-networks
+        s1_out = self.sub1(inputs=inputs)
+        s2_out = self.sub2(inputs=inputs)
+        
+        # Synthesize results using the judge
+        judge_inputs = {
+            "query": inputs.query, 
+            "responses": [s1_out.final_answer, s2_out.final_answer]
+        }
+        judged_result = self.judge(inputs=judge_inputs)
+        
+        # Return structured output
+        return NetworkOutput(final_answer=judged_result.get("final_answer", ""))
 
-
-class CaravanLabelingSignature(Signature):
-    """Signature for labeling network flows as benign or malicious."""
-
-    required_inputs: List[str] = ["question"]
-    prompt_template: str = (
-        "You are a network security expert.\n"
-        "Given these unlabeled flows:\n{question}\n"
-        "Label each flow as 0 for benign or 1 for malicious, one per line, no explanation.\n"
-    )
-    structured_output: Optional[Type[BaseModel]] = CaravanLabelsOutput
-    input_model: Optional[Type[BaseModel]] = CaravanLabelingInputs
-
+# Use the nested network with kwargs format
+network = NestedNetwork()
+result = network(inputs={"query": "Explain quantum computing"})
+print(f"Final answer: {result.final_answer}")
 ```
 
-### Benefits
-- **Better debugging**: If you pass the wrong dict shape to an operator, you’ll know immediately.
-- **Future expansions**: This paves the way for advanced transformations or auto-documentation.
-- **DSPy synergy**: In the future, Ember can seamlessly import DSPy “specifications” as Signatures.
+### Enhanced JIT and AutoGraph
 
-# 5. Operators 
+Ember provides a powerful tracing system that automatically builds and optimizes execution graphs with operators:
 
-Operators are the 'workhorse' components of Ember. If you're familiar with PyTorch, think of them like `nn.Module`s.
-
-They:
-- Encapsulate an **operator** (e.g., run an LM call, combine multiple output, invoke a tool or function, do text processing, etc.)
-- May define or reference a **Signature** for typed I/O. 
-- Can contain LMModules or other Operators as sub-components.
-- Provide a .forward(inputs) for **eager** exeuction, and optionally a .to_plan(inputs) for concurrency or scheduling. 
-
-## 5.1 Lifecycle of an Operator
-
-1. Instatiation:
 ```python
-op = NewOperator(lm_modules=[...], signature=)
+from typing import ClassVar, Dict, List
+from ember.xcs.tracer import jit
+from ember.xcs.engine import execution_options  
+from ember.core import non
+from ember.core.registry.operator.base import Operator
+from ember.core.registry.prompt_specification import Specification
+from ember.core.types.ember_model import EmberModel
+
+# Define our input and output types
+class PipelineInput(EmberModel):
+    query: str
+
+class PipelineOutput(EmberModel):
+    answer: str
+
+class PipelineSpecification(Specification):
+    input_model = PipelineInput
+    output_model = PipelineOutput
+
+@jit
+class ComplexPipeline(Operator[PipelineInput, PipelineOutput]):
+    """An operator-based pipeline with automatic graph building and optimization."""
+    
+    # Class-level specification declaration
+    specification: ClassVar[Specification] = PipelineSpecification()
+    
+    # Class-level field declarations
+    ensemble: non.UniformEnsemble
+    judge: non.JudgeSynthesis
+    
+    def __init__(self):
+        # Initialize declared fields
+        self.ensemble = non.UniformEnsemble(
+            num_units=3, 
+            model_name="openai:gpt-4o"
+        )
+        
+        self.judge = non.JudgeSynthesis(
+            model_name="anthropic:claude-3-sonnet"
+        )
+    
+    def forward(self, *, inputs: PipelineInput) -> PipelineOutput:
+        # This execution flow is automatically traced and optimized
+        ensemble_result = self.ensemble(inputs={"query": inputs.query})
+        
+        judge_inputs = {
+            "query": inputs.query,
+            "responses": ensemble_result["responses"]
+        }
+        
+        final_result = self.judge(inputs=judge_inputs)
+        return PipelineOutput(answer=final_result["final_answer"])
+
+# Create pipeline operator
+pipeline = ComplexPipeline()
+
+# First call traces and builds the graph with kwargs format
+with execution_options(max_workers=3):
+    result = pipeline(inputs={"query": "Explain the theory of relativity"})
+    print(f"Result: {result.answer}")
+
+# Subsequent calls reuse the optimized graph
+result = pipeline(inputs={"query": "What is quantum entanglement?"})
+print(f"Result: {result.answer}")
 ```
 
-2. (Optional) Input validation:
-If there's a signature, Ember checks if the input matches input_model or required_inputs. 
+### Data Handling and Evaluation
 
-3. Execution:
-- forward (inputs): runs synchronously in python, returns immediate results. 
-- to_plan (inputs): returns an ExecutionPlan if you want Ember's scheduler to handle concurrency and optimize execution. 
- 
-
-5. (Optional) Output validation:
-If there's a structured_output in the signature, Ember attempts to cast/validate the result.
-
-
-## 5.2 Common Operator Types
-
-- **RECURRENT**: Shape-preserving operators that refine or iterate on inputs over multiple steps. E.g., a self-refinement operator that calls a model repeatedly until convergence
-- **FAN_IN**: Dimensionality-reducing operators that combine, merge, or select amonst multiple inputs (e.g., aggregator, judge, verifier-based judge, rank-filter, or majority-vote). 
-- **FAN_OUT**: Dimensionality-expanding operators that produce multiple outputs from a single input (e.g., ensemble operators, or calls that split or replicate an input, such as prompt mixin operators that take in a single prompt and remix it by adding prefixes, suffixes, etc DSPy optimizer search style).
-
-## 5.3 Example: JudgeExplainerOperator
-Takes in multiple responses in a structured input, passes those calls to a judge lm call, returns two outputs: a final answer and an explanation in a structured output with a signature / prompt that asks for an explanation and a parse method call or GetAnswer op call or something to get afinite MCQ-compatible output, or True/False. 
+Ember includes powerful tools for dataset handling and model evaluation:
 
 ```python
-from collections import Counter
-from src.ember.registry.operator.operator_base import Operator
+from ember.core.utils.data import DataLoader, DataTransformer
+from ember.core.utils.eval import EvaluationPipeline, Evaluator
 
-class JudgeExplainerOperator(Operator):
+# Load a dataset
+loader = DataLoader.from_registry("mmlu")
+dataset = loader.load(subset="physics", split="test")
 
-```
-### Why This Matters:
-It’s **short**, **explicit**, and **composable**. You can feed multiple model outputs into this operator to get a final “sythesized” verdict.
+# Transform data for evaluation
+transformer = DataTransformer()
+prepared_data = transformer.transform(dataset, target_format="qa_pairs")
 
+# Create an evaluation pipeline
+eval_pipeline = EvaluationPipeline([
+    Evaluator.from_registry("accuracy"),
+    Evaluator.from_registry("response_quality")
+])
 
-# 6. GraphExecution and Scheduling
+# Define the model to evaluate
+from ember.core.registry.model.model_module import LMModule, LMModuleConfig
+model = LMModule(LMModuleConfig(model_name="openai:gpt-4o"))
 
-While operators can run eagerly, Ember also enables **graph-based** orchestration:
-- **NoNGraph** structures let you define a set of nodes (each node = an operator) and specify dependencies.
-- Basic default: a **topological sort** ensures each node runs only after its inputs are ready.
-- **Parallel execution** arises naturally for nodes that don’t depend on each other.
-
-## 6.1 NoNGraph
-
-A simple container that holds:
-	•	A dictionary of named nodes.
-	•	Each node references an Operator plus the names of other nodes whose outputs feed into it.
-
-## 6.2 Execution Plan & Scheduler
-- *ExecutionPlan* is a representation of tasks + dependencies. Operators that implement to_plan() produce these tasks.
-- **Scheduler** runs the tasks in topological order, spawning parallel threads or processes where possible.
-
-**Example**: If you have a single “EnsembleOperator” that fans out to N LM calls, to_plan() might generate N tasks, all depending on the single input. The scheduler can run them concurrently, then unify their results.
-
-# 7. Unifying this all: Extending multi-model example
-
-Let's demonstrate a bigger pipeline:
-
-1. **Goal**: Query three different models (gemini-1.5-pro, claude-3.5-sonnet, and gpt-4o) in parallel, then have a “judge” operator (which itself might be an LM-based aggregator) decide on a final best answer.
-2. **Setup**
-```python
-from src.ember.registry.model.model_registry import ModelRegistry
-from src.ember.registry.operator.operator_registry import EnsembleOperator, GetAnswerOperator
-from src.ember.registry.operator.operator_base import LMModuleConfig, LMModule
-
-# 1) Register the models
-registry = ModelRegistry()
-# (Imagine we've done registry.register_model(...) for each: gemini, claude, gpt-4o, etc.)
-
-# 2) Create LMModules for each
-gemini_mod = LMModule(LMModuleConfig(model_name="gemini-1.5-pro"), registry)
-claude_mod = LMModule(LMModuleConfig(model_name="claude-3.5-sonnet"), registry)
-g4o_mod    = LMModule(LMModuleConfig(model_name="gpt-4o"), registry)
-
-# 3) Instantiate an EnsembleOperator
-ensemble_op = EnsembleOperator(lm_modules=[gemini_mod, claude_mod, g4o_mod])
-
-# 4) Instantiate a "Judge" operator (GetAnswerOperator or MostCommonOperator)
-#    Here let's assume "GetAnswerOperator" uses a 'final_judge' LMModule
-judge_mod = LMModule(LMModuleConfig(model_name="o1-mini"), registry)
-judge_op = ...
+# Run evaluation
+results = eval_pipeline.evaluate(model, prepared_data)
+print(f"Accuracy: {results['accuracy']:.2f}")
+print(f"Response Quality: {results['response_quality']:.2f}")
 ```
 
-3.	Create a NoNGraph
-```python
-from src.ember.core.graph_executor import NoNGraphData, GraphExecutorService
+## Use Cases
 
-graph_data = NoNGraphData()
-# Node: "ensemble"
-graph_data.add_node(
-    name="ensemble", 
-    operator=ensemble_op, 
-    inputs=[]  # no prior node dependencies
-)
-# Node: "judge"
-graph_data.add_node(
-    name="judge",
-    operator=judge_op,
-    inputs=["ensemble"]  # feed ensemble output into judge
-)
+Ember is well-suited for complex AI pipelines such as:
 
-# 5) Provide the final input to the graph
-input_data = {"query": "Explain how to set up Ember for multi-model parallel usage"}
+- **Multi-model ensembling** for improved answer quality and robustness
+- **Verification and self-correction** pipelines with structured workflows
+- **Multi-agent systems** with specialized roles and coordination
+- **Tool-augmented systems** combining LLMs with specialized tools
+- **Complex reasoning chains** with intermediate evaluations and refinement
+- **Evaluation and benchmarking** of compound AI systems at scale
 
-# 6) Execute the graph
-executor_service = GraphExecutorService()
-results = executor_service.run(graph_data=graph_data, input_data=input_data)
+## Documentation
 
-print("Final answer from the judge:", results["judge"]["final_answer"])
-```
+For comprehensive documentation, including tutorials, API reference, and advanced usage:
 
-4.	What Happens
-	•	The “ensemble” node fans out to 3 different LLM modules concurrently.
-	•	Once finished, their combined output (list of responses) flows to the “judge.”
-	•	The “judge” operator uses its LM to pick or refine the best among them.
-	•	Finally, we get a single consolidated string in results["judge"]["final_answer"].
+- [Ember Documentation](https://pyember.ai)
+- [Architecture Overview](ARCHITECTURE.md)
+- [Contributing Guide](CONTRIBUTING.md)
+- [Examples Directory](src/ember/examples)
 
-Key Takeaways
-	•	The code is explicit about how data flows.
-	•	Ember automatically manages concurrency for the fan-out ensemble if you implement or use the operator’s to_plan() method.
-	•	You can easily swap the aggregator with a “MostCommonOperator” or any custom logic.
-	•	You can nest subgraphs or add more nodes as your pipeline grows in complexity.
+### Quickstart Guides
 
+- [Model Registry Quickstart](docs/quickstart/model_registry.md) - Get started with LLM integration
+- [Operators Quickstart](docs/quickstart/operators.md) - Build reusable computation units
+- [Prompt Specifications Quickstart](docs/quickstart/prompt_specifications.md) - Type-safe prompt engineering
+- [NON Quickstart](docs/quickstart/non.md) - Networks of Networks patterns
+- [Data Quickstart](docs/quickstart/data.md) - Working with datasets and evaluation
 
-# Next steps:
+## Performance
 
-In the next sections, we'll cover installation, quickstart instructions, advancd topics (like DSPy-based signature integration and LiteLLM synergy), and details on contributing to Ember's ecosystem.
+Ember is designed for high-performance LLM orchestration:
 
-## Conclusion
+- **Automatic parallelization** of independent operations
+- **Hierarchical operator awareness** for optimal execution planning
+- **Minimal overhead** compared to direct API calls
+- **Smart caching** of repeated operations and sub-graphs
+- **Efficient resource utilization** with dynamic scheduling
 
-Ember provides a compositional, extensible framework for building NoN compound AI systems. By following design principles akin to PyTorch, it offers a familiar and approachable structure for researchers and developers. Emphasizing explicit building blocks makes systems more understandable and manageable, even as they scale in complexity. With Ember, you can experiment with multiple models, operators, and consensus mechanisms, potentially improving the robustness and accuracy of AI-driven applications.
+## Community
+
+- [GitHub Issues](https://github.com/pyember/ember/issues): Bug reports and feature requests
+- [GitHub Discussions](https://github.com/pyember/ember/discussions): Questions and community support
+- [Discord](https://discord.gg/ember-ai): Join our community chat
 
 ## License
 
-Apache 2.0 License.
+Ember is released under the [Apache 2.0 License](LICENSE).
 
+---
 
+Built with 🔥 by the Ember community

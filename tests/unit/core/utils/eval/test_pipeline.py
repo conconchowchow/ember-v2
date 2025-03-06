@@ -1,6 +1,5 @@
 """Tests for pipeline module."""
 
-from typing import Any, Dict, List, Optional, Tuple, TypeVar
 import sys
 import os
 import unittest
@@ -15,7 +14,7 @@ print(f"Current directory: {os.getcwd()}")
 try:
     from ember.core.utils.eval.base_evaluator import EvaluationResult, IEvaluator
 except ImportError:
-    from src.ember.core.utils.eval.base_evaluator import EvaluationResult, IEvaluator
+    from ember.core.utils.eval.base_evaluator import EvaluationResult, IEvaluator
 
 try:
     from ember.core.utils.eval.pipeline import (
@@ -26,7 +25,7 @@ try:
         summarize_batch,
     )
 except ImportError:
-    from src.ember.core.utils.eval.pipeline import (
+    from ember.core.utils.eval.pipeline import (
         PipelineEvaluator,
         BatchEvaluationSummary,
         evaluate_batch,
@@ -282,8 +281,8 @@ class TestEvaluateBatchWithSummary(unittest.TestCase):
             EvaluationResult(is_correct=True, score=0.8),
         ]
 
-    @mock.patch("src.ember.core.utils.eval.pipeline.evaluate_batch")
-    @mock.patch("src.ember.core.utils.eval.pipeline.summarize_batch")
+    @mock.patch("ember.core.utils.eval.pipeline.evaluate_batch")
+    @mock.patch("ember.core.utils.eval.pipeline.summarize_batch")
     def test_function_composition(
         self, mock_summarize: mock.MagicMock, mock_evaluate: mock.MagicMock
     ) -> None:

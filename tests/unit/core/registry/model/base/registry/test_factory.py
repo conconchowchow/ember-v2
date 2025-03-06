@@ -7,14 +7,14 @@ import pytest
 from typing import Any, Dict
 from unittest.mock import patch
 
-from src.ember.core.registry.model.base.registry.factory import ModelFactory
-from src.ember.core.registry.model.base.schemas.model_info import ModelInfo
-from src.ember.core.registry.model.base.schemas.provider_info import ProviderInfo
-from src.ember.core.registry.model.base.schemas.cost import ModelCost, RateLimit
-from src.ember.core.registry.model.base.utils.model_registry_exceptions import (
+from ember.core.registry.model.base.registry.factory import ModelFactory
+from ember.core.registry.model.base.schemas.model_info import ModelInfo
+from ember.core.registry.model.base.schemas.provider_info import ProviderInfo
+from ember.core.registry.model.base.schemas.cost import ModelCost, RateLimit
+from ember.core.registry.model.base.utils.model_registry_exceptions import (
     ProviderConfigError,
 )
-from src.ember.core.registry.model.providers.base_provider import BaseProviderModel
+from ember.core.registry.model.providers.base_provider import BaseProviderModel
 
 
 # Dummy provider class for testing
@@ -43,11 +43,11 @@ def dummy_discover_providers(*, package_path: str) -> Dict[str, type]:
 def patch_factory(monkeypatch: pytest.MonkeyPatch) -> None:
     # This ensures that 'DummyProvider' is recognized
     monkeypatch.setattr(
-        "src.ember.core.registry.model.base.registry.factory.discover_providers_in_package",
+        "ember.core.registry.model.base.registry.factory.discover_providers_in_package",
         dummy_discover_providers,
     )
     # Also reset the cached providers
-    from src.ember.core.registry.model.base.registry.factory import ModelFactory
+    from ember.core.registry.model.base.registry.factory import ModelFactory
 
     ModelFactory._provider_cache = None
 
@@ -83,7 +83,7 @@ def test_create_model_from_info_invalid(monkeypatch: pytest.MonkeyPatch) -> None
         raise ValueError("Invalid model ID format")
 
     monkeypatch.setattr(
-        "src.ember.core.registry.model.base.registry.factory.parse_model_str",
+        "ember.core.registry.model.base.registry.factory.parse_model_str",
         mock_parse_model_str,
     )
 

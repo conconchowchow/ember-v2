@@ -1,15 +1,16 @@
 from __future__ import annotations
 
 from typing import Any, Dict, Optional, Type
-from pydantic import BaseModel, Field
+from pydantic import Field
 
-from src.ember.core.registry.operator.base.operator_base import Operator
-from src.ember.core.exceptions import MissingLMModuleError
-from src.ember.core.registry.prompt_signature.signatures import Signature
-from src.ember.core.registry.model.model_module.lm import LMModule
+from ember.core.registry.operator.base.operator_base import Operator
+from ember.core.exceptions import MissingLMModuleError
+from ember.core.types.ember_model import EmberModel
+from ember.core.registry.prompt_specification.specification import Specification
+from ember.core.registry.model.model_module.lm import LMModule
 
 
-class VerifierOperatorInputs(BaseModel):
+class VerifierOperatorInputs(EmberModel):
     """Input model for VerifierOperator.
 
     Attributes:
@@ -21,7 +22,7 @@ class VerifierOperatorInputs(BaseModel):
     candidate_answer: str
 
 
-class VerifierOperatorOutputs(BaseModel):
+class VerifierOperatorOutputs(EmberModel):
     """Typed output model for VerifierOperator.
 
     Attributes:
@@ -35,8 +36,8 @@ class VerifierOperatorOutputs(BaseModel):
     revised_answer: Optional[str]
 
 
-class VerifierSignature(Signature):
-    """Signature for VerifierOperator defining the verification prompt."""
+class VerifierSpecification(Specification):
+    """Specification for VerifierOperator defining the verification prompt."""
 
     prompt_template: str = (
         "You are a verifier of correctness.\n"
@@ -47,14 +48,14 @@ class VerifierSignature(Signature):
         "Explanation: <Your reasoning>\n"
         "Revised Answer (optional): <If you can and want to provide a corrected version>\n"
     )
-    input_model: Type[VerifierOperatorInputs] = VerifierOperatorInputs
-    output_model: Type[VerifierOperatorOutputs] = VerifierOperatorOutputs
+    input_model: Type[EmberModel] = VerifierOperatorInputs
+    output_model: Type[EmberModel] = VerifierOperatorOutputs
 
 
 class VerifierOperator(Operator[VerifierOperatorInputs, VerifierOperatorOutputs]):
     """Operator to verify a candidate answer and optionally suggest revisions."""
 
-    signature: Signature = VerifierSignature()
+    specification: Specification = VerifierSpecification()
     lm_module: LMModule
 
     def __init__(self, *, lm_module: LMModule) -> None:
@@ -63,27 +64,63 @@ class VerifierOperator(Operator[VerifierOperatorInputs, VerifierOperatorOutputs]
     def forward(self, *, inputs: VerifierOperatorInputs) -> VerifierOperatorOutputs:
         if not self.lm_module:
             raise MissingLMModuleError("No LM module attached to VerifierOperator.")
-        rendered_prompt: str = self.signature.render_prompt(inputs=inputs.model_dump())
+        rendered_prompt: str = self.specification.render_prompt(inputs=inputs)
         raw_output: str = self.lm_module(prompt=rendered_prompt).strip()
 
-        # Defaults; we parse lines to fill them in
-        parsed_output: Dict[str, Any] = {
-            "verdict": 0,
-            "explanation": "",
-            "revised_answer": None,
-        }
+        # Initialize default values
+        verdict = 0
+        explanation = ""
+        revised_answer = None
+
+        # Process each line with more robust parsing
+        in_explanation_section = False
+        in_revised_answer_section = False
+        explanation_lines = []
+        revised_answer_lines = []
+
         for line in raw_output.split("\n"):
             clean_line = line.strip()
+
+            # Parse verdict
             if clean_line.startswith("Verdict:"):
                 verdict_value = clean_line.replace("Verdict:", "").strip()
-                parsed_output["verdict"] = 1 if verdict_value == "1" else 0
-            elif clean_line.startswith("Explanation:"):
-                parsed_output["explanation"] = clean_line.replace(
-                    "Explanation:", ""
-                ).strip()
-            elif clean_line.startswith("Revised Answer:"):
-                parsed_output["revised_answer"] = clean_line.replace(
-                    "Revised Answer:", ""
-                ).strip()
+                try:
+                    verdict_num = int(verdict_value)
+                    verdict = 1 if verdict_num == 1 else 0
+                except ValueError:
+                    # Handle text verdicts like "correct" or "incorrect"
+                    verdict = 1 if "correct" in verdict_value.lower() else 0
 
-        return VerifierOperatorOutputs(**parsed_output)
+            # Parse explanation
+            elif clean_line.startswith("Explanation:"):
+                in_explanation_section = True
+                in_revised_answer_section = False
+                explanation_part = clean_line.replace("Explanation:", "").strip()
+                if explanation_part:
+                    explanation_lines.append(explanation_part)
+
+            # Parse revised answer
+            elif clean_line.startswith("Revised Answer:"):
+                in_explanation_section = False
+                in_revised_answer_section = True
+                revised_part = clean_line.replace("Revised Answer:", "").strip()
+                if revised_part:
+                    revised_answer_lines.append(revised_part)
+
+            # Continue parsing multi-line sections
+            elif in_explanation_section:
+                explanation_lines.append(clean_line)
+            elif in_revised_answer_section:
+                revised_answer_lines.append(clean_line)
+
+        # Finalize parsing
+        if explanation_lines:
+            explanation = "\n".join(explanation_lines)
+        if revised_answer_lines:
+            revised_answer = "\n".join(revised_answer_lines)
+
+        return {
+            "verdict": verdict,
+            "explanation": explanation,
+            "revised_answer": revised_answer,
+        }

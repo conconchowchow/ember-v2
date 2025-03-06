@@ -3,19 +3,18 @@
 """
 
 import pytest
-from typing import Any
 
-from src.ember.core.registry.model.providers.deepmind.deepmind_provider import (
+from ember.core.registry.model.providers.deepmind.deepmind_provider import (
     GeminiModel,
     GeminiChatParameters,
 )
-from src.ember.core.registry.model.base.schemas.chat_schemas import (
+from ember.core.registry.model.base.schemas.chat_schemas import (
     ChatResponse,
     ChatRequest,
 )
-from src.ember.core.registry.model.base.schemas.model_info import ModelInfo
-from src.ember.core.registry.model.base.schemas.provider_info import ProviderInfo
-from src.ember.core.registry.model.base.schemas.cost import ModelCost, RateLimit
+from ember.core.registry.model.base.schemas.model_info import ModelInfo
+from ember.core.registry.model.base.schemas.provider_info import ProviderInfo
+from ember.core.registry.model.base.schemas.cost import ModelCost, RateLimit
 
 
 class DummyGeminiResponse:
@@ -51,7 +50,7 @@ def patch_genai(monkeypatch: pytest.MonkeyPatch) -> None:
     monkeypatch.setattr(genai, "list_models", lambda: [])
     # Patch GenerativeModel to be our dummy.
     monkeypatch.setattr(
-        "src.ember.core.registry.model.providers.deepmind.deepmind_provider.GenerativeModel",
+        "ember.core.registry.model.providers.deepmind.deepmind_provider.GenerativeModel",
         lambda model_ref: type(
             "DummyGenerativeModel",
             (),

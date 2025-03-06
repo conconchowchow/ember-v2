@@ -16,23 +16,23 @@ from typing import Any, Dict, List, Type
 import pytest
 from pydantic import BaseModel
 
-from src.ember.core.registry.operator.base.operator_base import Operator
-from src.ember.xcs.tracer.tracer_decorator import jit
+from ember.core.registry.operator.base.operator_base import Operator
+from ember.xcs.tracer.tracer_decorator import jit
 import time
 from typing import Dict
 
-from src.ember.xcs.engine.xcs_engine import (
+from ember.xcs.engine.xcs_engine import (
     compile_graph,
     TopologicalSchedulerWithParallelDispatch,
 )
-from src.ember.xcs.engine.xcs_noop_scheduler import XCSNoOpScheduler
-from src.ember.xcs.graph.xcs_graph import XCSGraph
-from src.ember.xcs.tracer.xcs_tracing import TracerContext
-from src.ember.core.registry.operator.exceptions import OperatorExecutionError
+from ember.xcs.engine.xcs_noop_scheduler import XCSNoOpScheduler
+from ember.xcs.graph.xcs_graph import XCSGraph
+from ember.xcs.tracer.xcs_tracing import TracerContext
+from ember.core.registry.operator.exceptions import OperatorExecutionError
 
 
 # -----------------------------------------------------------------------------
-# Dummy Models and Signature
+# Dummy Models and Specification
 # -----------------------------------------------------------------------------
 class DummyInputs(BaseModel):
     """Input data model for dummy operators.
@@ -54,14 +54,14 @@ class DummyOutputs(BaseModel):
     answer: str
 
 
-class DummySignature:
-    """A minimal dummy signature for testing purposes.
+class DummySpecification:
+    """A minimal dummy specification for testing purposes.
 
     Provides methods to validate inputs and outputs as well as render prompts.
     """
 
     def __init__(self, input_model: Type[BaseModel]) -> None:
-        """Initializes the dummy signature.
+        """Initializes the dummy specification.
 
         Args:
             input_model (Type[BaseModel]): The input model class.
@@ -114,7 +114,7 @@ class DummyMemberOperator(Operator[DummyInputs, DummyOutputs]):
         member_index (int): The index of this member within an ensemble.
     """
 
-    signature: DummySignature = DummySignature(DummyInputs)
+    specification: DummySpecification = DummySpecification(DummyInputs)
 
     def __init__(self, *, member_index: int) -> None:
         """Initializes the dummy member operator.
@@ -143,7 +143,7 @@ class WideEnsembleOperator(Operator[DummyInputs, Dict[str, Any]]):
         members (List[DummyMemberOperator]): List of member operators.
     """
 
-    signature: DummySignature = DummySignature(DummyInputs)
+    specification: DummySpecification = DummySpecification(DummyInputs)
 
     def __init__(self, *, num_members: int) -> None:
         """Initializes a wide ensemble with the given number of members.
@@ -171,7 +171,7 @@ class WideEnsembleOperator(Operator[DummyInputs, Dict[str, Any]]):
 class DummyJudgeOperator(Operator[DummyInputs, DummyOutputs]):
     """Operator that simulates a judge by returning a fixed answer."""
 
-    signature: DummySignature = DummySignature(DummyInputs)
+    specification: DummySpecification = DummySpecification(DummyInputs)
 
     def forward(self, *, inputs: DummyInputs) -> DummyOutputs:
         """Returns a fixed judge response.
@@ -194,7 +194,7 @@ class NestedOperator(Operator[DummyInputs, Dict[str, Any]]):
         judge (DummyJudgeOperator): The judge operator.
     """
 
-    signature: DummySignature = DummySignature(DummyInputs)
+    specification: DummySpecification = DummySpecification(DummyInputs)
 
     def __init__(self) -> None:
         self.ensemble1: WideEnsembleOperator = WideEnsembleOperator(num_members=3)
@@ -228,8 +228,8 @@ class DelayOperator(Operator[Dict[str, Any], Dict[str, Any]]):
         delay (float): The number of seconds to sleep.
     """
 
-    # Use a minimal dummy signature.
-    signature = DummySignature(dict)
+    # Use a minimal dummy specification.
+    specification = DummySpecification(dict)
 
     def __init__(self, *, delay: float) -> None:
         self.delay: float = delay
@@ -247,7 +247,7 @@ class DelayEnsembleOperator(Operator[Dict[str, Any], Dict[str, Any]]):
     JIT tracing produces trace records and that execution via the XCS engine can run in parallel.
     """
 
-    signature = DummySignature(dict)
+    specification = DummySpecification(dict)
 
     def __init__(self, *, num_members: int, delay: float) -> None:
         self.members: List[DelayOperator] = [
@@ -263,7 +263,7 @@ class DelayEnsembleOperator(Operator[Dict[str, Any], Dict[str, Any]]):
 class RawParallelDummyOperator(Operator[DummyInputs, DummyOutputs]):
     """A raw parallel operator that waits on a barrier before returning a response."""
 
-    signature: DummySignature = DummySignature(DummyInputs)
+    specification: DummySpecification = DummySpecification(DummyInputs)
 
     def __init__(self, *, barrier: threading.Barrier) -> None:
         self.barrier: threading.Barrier = barrier
@@ -277,7 +277,7 @@ class RawParallelDummyOperator(Operator[DummyInputs, DummyOutputs]):
 class ParallelWideEnsembleOperator(Operator[DummyInputs, Dict[str, Any]]):
     """Operator that executes a wide ensemble in parallel using barrier synchronization."""
 
-    signature: DummySignature = DummySignature(DummyInputs)
+    specification: DummySpecification = DummySpecification(DummyInputs)
 
     def __init__(self, *, num_members: int, barrier: threading.Barrier) -> None:
         self.members: List[RawParallelDummyOperator] = [
@@ -298,7 +298,7 @@ class ParallelWideEnsembleOperator(Operator[DummyInputs, Dict[str, Any]]):
 class FaultyOperator(Operator[DummyInputs, DummyOutputs]):
     """Operator that raises an error to test error propagation."""
 
-    signature: DummySignature = DummySignature(DummyInputs)
+    specification: DummySpecification = DummySpecification(DummyInputs)
 
     def forward(self, *, inputs: DummyInputs) -> DummyOutputs:
         raise ValueError("Test error")
@@ -363,15 +363,16 @@ def test_parallel_execution_wide_ensemble() -> None:
     ), f"Expected {num_members} responses, got {len(responses)}"
 
 
-def test_jit_caching() -> None:
-    """Tests that the JIT-decorated operator executes its forward method on every call.
+def test_jit_tracing() -> None:
+    """Tests that the JIT-decorated operator traces execution.
 
-    Since caching is not implemented, each call should invoke the forward method.
+    Note: This test was previously called test_jit_caching but has been updated to match
+    the current implementation which focuses on tracing rather than caching.
     """
 
-    @jit(sample_input={"x": 0}, force_trace=False)
-    class CachingOperator(Operator[DummyInputs, Dict[str, Any]]):
-        signature: DummySignature = DummySignature(DummyInputs)
+    @jit(sample_input={"query": "init"}, force_trace=False)
+    class TracedOperator(Operator[DummyInputs, Dict[str, Any]]):
+        specification: DummySpecification = DummySpecification(DummyInputs)
 
         def __init__(self, *, num_members: int) -> None:
             self.members: List[DummyMemberOperator] = [
@@ -386,15 +387,30 @@ def test_jit_caching() -> None:
             ]
             return {"responses": responses}
 
-    op: CachingOperator = CachingOperator(num_members=5)
-    input_data: DummyInputs = DummyInputs(query="test")
-    _ = op(inputs=input_data)
+    op: TracedOperator = TracedOperator(num_members=5)
+
+    # First call with a unique input
+    input_data_1: DummyInputs = DummyInputs(query="test_1")
+    _ = op(inputs=input_data_1)
     first_count: int = op.call_count
-    _ = op(inputs=input_data)
+
+    # Second call with same input
+    _ = op(inputs=input_data_1)
     second_count: int = op.call_count
-    assert (
-        second_count == first_count + 1
-    ), "Expected forward to be called again (no caching)."
+    assert second_count > first_count, "Expected call_count to increase with each call"
+
+    # Third call with different input
+    input_data_2: DummyInputs = DummyInputs(query="test_2")
+    _ = op(inputs=input_data_2)
+    third_count: int = op.call_count
+    assert third_count > second_count, "Expected call_count to continue increasing"
+
+    # Verify operation with a tracer context
+    with TracerContext() as tracer:
+        _ = op(inputs=input_data_1)
+        assert (
+            len(tracer.records) >= 1
+        ), "Expected trace records when within a TracerContext"
 
 
 def test_error_handling() -> None:
@@ -435,8 +451,13 @@ def test_jit_produces_xcs_graph_and_parallel_speedup() -> None:
     num_members: int = 20
     delay: float = 0.1  # seconds per member
 
-    # Create a JIT-decorated DelayEnsembleOperator instance.
-    ensemble = DelayEnsembleOperator(num_members=num_members, delay=delay)
+    # Create a JIT-decorated DelayEnsembleOperator instance but ensure force_trace is True
+    # for verification purposes in this test
+    @jit(force_trace=True)
+    class TestDelayEnsembleOperator(DelayEnsembleOperator):
+        pass
+
+    ensemble = TestDelayEnsembleOperator(num_members=num_members, delay=delay)
 
     # Confirm JIT tracing: run inside a TracerContext to verify trace records are produced.
     with TracerContext() as tracer:

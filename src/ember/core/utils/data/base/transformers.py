@@ -1,17 +1,20 @@
 from __future__ import annotations
 
 from abc import ABC, abstractmethod
-from typing import Union, List, Dict, Any
+from typing import Union, List, Dict, Any, TypedDict
 from datasets import Dataset
 
 # Define a type alias for dataset representations.
 DatasetType = Union[Dataset, List[Dict[str, Any]]]
 
+# Simple type alias for dataset items
+DatasetItem = Dict[str, Any]
+
 
 class IDatasetTransformer(ABC):
     """Interface for dataset transformers.
 
-    This abstract base class defines the method signature for transforming dataset
+    This abstract base class defines the method specification for transforming dataset
     objects, ensuring consistency across transformer implementations.
     """
 

@@ -1,16 +1,17 @@
 from __future__ import annotations
 
 from typing import List, Optional, Type
-from pydantic import BaseModel, Field
+from pydantic import Field
 
-from src.ember.core.registry.operator.base.operator_base import Operator
-from src.ember.core.exceptions import MissingLMModuleError
+from ember.core.registry.operator.base.operator_base import Operator
+from ember.core.exceptions import MissingLMModuleError
+from ember.core.types.ember_model import EmberModel
 
-from src.ember.core.registry.prompt_signature.signatures import Signature
-from src.ember.core.registry.model.model_module.lm import LMModule
+from ember.core.registry.prompt_specification.specification import Specification
+from ember.core.registry.model.model_module.lm import LMModule
 
 
-class JudgeSynthesisInputs(BaseModel):
+class JudgeSynthesisInputs(EmberModel):
     """Input model for JudgeSynthesisOperator.
 
     Attributes:
@@ -22,7 +23,7 @@ class JudgeSynthesisInputs(BaseModel):
     responses: List[str] = Field(..., description="Aggregated ensemble responses.")
 
 
-class JudgeSynthesisOutputs(BaseModel):
+class JudgeSynthesisOutputs(EmberModel):
     """Output model for JudgeSynthesisOperator.
 
     Attributes:
@@ -34,8 +35,8 @@ class JudgeSynthesisOutputs(BaseModel):
     reasoning: str
 
 
-class JudgeSynthesisSignature(Signature):
-    """Signature for JudgeSynthesisOperator defining the synthesis prompt."""
+class JudgeSynthesisSpecification(Specification):
+    """Specification for JudgeSynthesisOperator defining the synthesis prompt."""
 
     prompt_template: str = (
         "We have multiple advisors who proposed different answers:\n"
@@ -47,14 +48,14 @@ class JudgeSynthesisSignature(Signature):
         "Reasoning: <your reasoning for synthesizing this answer in this way>\n"
         "Final Answer: <the single best answer>\n"
     )
-    structured_output: Optional[Type[BaseModel]] = JudgeSynthesisOutputs
-    input_model: Type[BaseModel] = JudgeSynthesisInputs
+    structured_output: Optional[Type[EmberModel]] = JudgeSynthesisOutputs
+    input_model: Type[EmberModel] = JudgeSynthesisInputs
 
 
 class JudgeSynthesisOperator(Operator[JudgeSynthesisInputs, JudgeSynthesisOutputs]):
     """Operator to synthesize a final answer and reasoning from multiple responses."""
 
-    signature: Signature = JudgeSynthesisSignature()
+    specification: Specification = JudgeSynthesisSpecification()
     lm_module: LMModule
 
     def __init__(self, *, lm_module: LMModule) -> None:
@@ -67,22 +68,28 @@ class JudgeSynthesisOperator(Operator[JudgeSynthesisInputs, JudgeSynthesisOutput
                 "No LM module attached to JudgeSynthesisOperator."
             )
 
-        rendered_prompt: str = self.signature.render_prompt(inputs=inputs.model_dump())
+        rendered_prompt: str = self.specification.render_prompt(inputs=inputs)
         raw_output: str = self.lm_module(prompt=rendered_prompt).strip()
 
+        # Parse the response to extract reasoning and final answer
         final_answer = "Unknown"
         reasoning_lines: List[str] = []
+        in_reasoning_section = False
 
         for line in raw_output.splitlines():
             line = line.strip()
+
             if line.startswith("Final Answer:"):
                 final_answer = line.replace("Final Answer:", "").strip()
                 break
-            reasoning_lines.append(line)
+            elif line.startswith("Reasoning:"):
+                in_reasoning_section = True
+                reasoning_part = line.replace("Reasoning:", "").strip()
+                if reasoning_part:
+                    reasoning_lines.append(reasoning_part)
+            elif in_reasoning_section:
+                reasoning_lines.append(line)
 
         reasoning = "\n".join(reasoning_lines)
 
-        return JudgeSynthesisOutputs(
-            final_answer=final_answer,
-            reasoning=reasoning,
-        )
+        return {"final_answer": final_answer, "reasoning": reasoning}

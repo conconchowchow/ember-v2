@@ -6,9 +6,9 @@ and execution using a mock operator.
 
 from typing import Any, Dict
 
-from src.ember.core.registry.operator.base.operator_base import Operator
-from src.ember.xcs.tracer.xcs_tracing import TracerContext
-from src.ember.xcs.tracer.tracer_decorator import jit
+from ember.core.registry.operator.base.operator_base import Operator
+from ember.xcs.tracer.xcs_tracing import TracerContext
+from ember.xcs.tracer.tracer_decorator import jit
 
 
 @jit()
@@ -16,13 +16,13 @@ class MockOperator(Operator[Dict[str, Any], Dict[str, Any]]):
     """Mock operator for integration tests that doubles the input value.
 
     Attributes:
-        signature: A dummy signature providing input model definitions and basic
+        specification: A dummy specification providing input model definitions and basic
                    validation methods.
     """
 
-    # For testing, we use a simplified signature.
-    signature = type(
-        "DummySignature",
+    # For testing, we use a simplified specification.
+    specification = type(
+        "DummySpecification",
         (),
         {
             "input_model": dict,
