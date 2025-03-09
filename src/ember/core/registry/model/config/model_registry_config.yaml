@@ -5,8 +5,8 @@ registry:
   auto_register: true
   auto_discover: true
   included_configs:
-  - "./src/ember/registry/model/provider_registry/openai/openai_config.yaml"
-  - "./src/ember/registry/model/provider_registry/anthropic/anthropic_config.yaml"
-  - "./src/ember/registry/model/provider_registry/deepmind/gemini_config.yaml"
+  - "./src/ember/core/registry/model/providers/openai/openai_config.yaml"
+  - "./src/ember/core/registry/model/providers/anthropic/anthropic_config.yaml"
+  - "./src/ember/core/registry/model/providers/deepmind/gemini_config.yaml"
   # Optional local overrides may be provided under "models:"
   # To add more providers here as we grow
