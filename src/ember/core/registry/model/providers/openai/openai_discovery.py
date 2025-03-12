@@ -19,7 +19,7 @@ class OpenAIDiscovery(BaseDiscoveryProvider):
             Dict[str, Dict[str, Any]]: A mapping of standardized model IDs to model details.
         """
         try:
-            response: Dict[str, Any] = openai.Model.list()
+            response: Dict[str, Any] = openai.models.list().model_dump()
             logger.debug("Fetched OpenAI model list: %s", response)
             models: Dict[str, Dict[str, Any]] = {}
             model_list: List[Dict[str, Any]] = response.get("data", [])
@@ -32,7 +32,7 @@ class OpenAIDiscovery(BaseDiscoveryProvider):
                     model_id=standardized_model_id, model_data=model
                 )
             return models
-        except openai.error.OpenAIError as err:
+        except openai.OpenAIError as err:
             logger.exception(
                 "Failed to fetch models from OpenAI due to an API error: %s", err
             )

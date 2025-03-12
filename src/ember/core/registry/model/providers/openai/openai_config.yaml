@@ -1,7 +1,7 @@
 registry:
   models:
-    - model_id: "openai:gpt-4o"
-      model_name: "gpt-4o"
+    - id: "openai:gpt-4o"
+      name: "gpt-4o"
       cost:
         input_cost_per_million: 5000   # $5.00 per million input tokens
         output_cost_per_million: 15000 # $15.00 per million output tokens
@@ -14,8 +14,8 @@ registry:
         base_url: "https://api.openai.com"
       api_key: null
 
-    - model_id: "openai:gpt-4o-mini"
-      model_name: "gpt-4o-mini"
+    - id: "openai:gpt-4o-mini"
+      name: "gpt-4o-mini"
       cost:
         input_cost_per_million: 150    # $0.15 per million input tokens
         output_cost_per_million: 600   # $0.60 per million output tokens
@@ -28,8 +28,8 @@ registry:
         base_url: "https://api.openai.com"
       api_key: null
 
-    - model_id: "openai:o1"
-      model_name: "o1"
+    - id: "openai:o1"
+      name: "o1"
       cost:
         input_cost_per_million: 10000
         output_cost_per_million: 20000

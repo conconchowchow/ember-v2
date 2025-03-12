@@ -18,6 +18,7 @@ from pydantic_settings import BaseSettings, SettingsConfigDict
 from ember.core.exceptions import EmberError
 from ember.core.registry.model.base.schemas.model_info import ModelInfo
 from ember.core.registry.model.base.registry.model_registry import ModelRegistry
+from ember.core.configs.config_core import load_full_config
 
 logger: logging.Logger = logging.getLogger(__name__)
 
@@ -126,7 +127,7 @@ class EmberSettings(BaseSettings):
     """
 
     model_config_path: str = Field(
-        default_factory=lambda: os.path.join(os.path.dirname(__file__), "config.yaml")
+        default_factory=lambda: os.path.join(os.path.dirname(__file__), "model_registry_config.yaml")
     )
     openai_api_key: Optional[str] = None
     anthropic_api_key: Optional[str] = None
@@ -161,9 +162,10 @@ def _initialize_model_registry(*, settings: EmberSettings) -> ModelRegistry:
     try:
         merged_config: Dict[str, Any] = {}
         if os.path.isfile(settings.model_config_path):
-            with open(settings.model_config_path, "r") as f:
-                file_config = yaml.safe_load(f) or {}
-            merged_config = deep_merge(base=merged_config, override=file_config)
+            # with open(settings.model_config_path, "r") as f:
+            #     file_config = yaml.safe_load(f) or {}
+            merged_config = load_full_config(base_config_path=settings.model_config_path)
+            # merged_config = deep_merge(base=merged_config, override=file_config)
             logger.debug("Loaded config from %s", settings.model_config_path)
         else:
             logger.debug(
@@ -181,6 +183,8 @@ def _initialize_model_registry(*, settings: EmberSettings) -> ModelRegistry:
 
     final_settings: EmberSettings = EmberSettings(**merged_config)
     registry: ModelRegistry = ModelRegistry(logger=logger)
+
+    logger.debug("hello!")
 
     discovered_models: Dict[str, ModelInfo] = {}
     if final_settings.registry.auto_discover:
