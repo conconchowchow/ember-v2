@@ -26,6 +26,11 @@ class DeepmindDiscovery(BaseDiscoveryProvider):
         try:
             models: Dict[str, Dict[str, Any]] = {}
             available_models: List[Any] = list(genai.list_models())
+
+            # removing prefix from each string of "models/"
+            # logger.debug(available_models)
+            # available_models = [s[7:] for s in available_models] 
+
             for model in available_models:
                 model_id: str = f"google:{model.name}"
                 models[model_id] = {

@@ -33,7 +33,7 @@ def main() -> None:
             "openai:gpt-4o-mini",
             "anthropic:claude-3.5-sonnet",
             "invalid:model",  # Expected to trigger an error.
-            "deepmind:gemini-1.5-pro",
+            "google:model/gemini-1.5-pro",
         ]
 
         for model_id in model_ids:

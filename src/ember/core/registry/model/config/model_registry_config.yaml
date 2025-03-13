@@ -7,6 +7,6 @@ registry:
   included_configs:
   - "./src/ember/core/registry/model/providers/openai/openai_config.yaml"
   - "./src/ember/core/registry/model/providers/anthropic/anthropic_config.yaml"
-  - "./src/ember/core/registry/model/providers/deepmind/gemini_config.yaml"
+  - "./src/ember/core/registry/model/providers/deepmind/deepmind_config.yaml"
   # Optional local overrides may be provided under "models:"
   # To add more providers here as we grow

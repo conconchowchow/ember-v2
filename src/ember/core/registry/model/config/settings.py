@@ -184,8 +184,6 @@ def _initialize_model_registry(*, settings: EmberSettings) -> ModelRegistry:
     final_settings: EmberSettings = EmberSettings(**merged_config)
     registry: ModelRegistry = ModelRegistry(logger=logger)
 
-    logger.debug("hello!")
-
     discovered_models: Dict[str, ModelInfo] = {}
     if final_settings.registry.auto_discover:
         from ember.core.registry.model.base.registry.discovery import (
